@@ -21,7 +21,7 @@ byte _mem[RJ_MEM_SIZE] = {0};
 #define book_keeper ((book_keep*)(&(_mem[RJ_MEM_SIZE-sizeof(book_keep)])))
 #define block_to_header(b) ((alloc_header*)( ((byte*)(b)) - sizeof(alloc_header) ))
 #define block_to_footer(b) ((alloc_footer*)(((byte*)(b)) + block_to_header(b)->size))
-#define prev_header(b) (((alloc_footer*)( block_to_header(b) - sizeof(alloc_footer) ))->header)
+#define prev_header(b) (((alloc_footer*)( ((byte*)block_to_header(b)) - sizeof(alloc_footer) ))->header)
 #define next_header(b) ((alloc_header*)(((byte*)(b)) + block_to_header(b)->size + sizeof(alloc_footer)))
 #define header_to_block(h) ((block)(((byte*)(h)) + sizeof(alloc_header)))
 #define first_header ((alloc_header*)&_mem[0])
@@ -35,6 +35,21 @@ typedef struct{
 	bool isfree: 1;
 } alloc_header;
 typedef struct{ alloc_header* header; } alloc_footer;
+
+#define dump_blocks() _dump_blocks(__FILE__, __LINE__)
+void _dump_blocks(char* file, int line){
+	printf("BLOCKS %s:%d\n", file, line);
+	if (book_keeper->last == NULL){
+		printf("    <no blocks>\n");
+		return;
+	}
+	alloc_header* curr_header = first_header;
+	while (true){
+		printf("    block(%s) <%zu>\n", curr_header->isfree?"free":"used", curr_header->size);
+		if (header_to_block(curr_header) == book_keeper->last) {return;}
+		curr_header = next_header(header_to_block(curr_header));
+	}
+}
 
 static block _create_last_block(size_t size){
 	alloc_header* h = (book_keeper->last == NULL) ? first_header : next_header(book_keeper->last);
@@ -142,13 +157,18 @@ void free(block p){
 }
 
 int main(){
+	dump_blocks();
 	byte* x = malloc(10);
+	dump_blocks();
 	byte* y = malloc(2);
+	dump_blocks();
 	printf("_mem = %p\nx = %p\ny = %p\n", first_header, x, y);
-	getchar();
 	free(x);
+	dump_blocks();
 	free(y);
+	dump_blocks();
 	x = malloc(10);
+	dump_blocks();
 	printf("x = %p\n", x);
 
 	return 0;
