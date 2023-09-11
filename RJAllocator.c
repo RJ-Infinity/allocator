@@ -1,20 +1,11 @@
-#include <stddef.h>
-#include <string.h>
-#include <stdint.h>
+#include "RJAllocator.h"
+
+#include <stdbool.h>
 #include <stdio.h>
 #include <assert.h>
-#include <stdbool.h>
-
-#define malloc RJ_malloc
-#define calloc RJ_calloc
-#define realloc RJ_realloc
-#define free RJ_free
+#include <string.h>
 
 typedef unsigned char byte;
-
-#ifndef RJ_MEM_SIZE
-	#define RJ_MEM_SIZE (64 * 1000 * 1000)
-#endif
 
 byte _mem[RJ_MEM_SIZE] = {0};
 
@@ -36,16 +27,21 @@ typedef struct{
 } alloc_header;
 typedef struct{ alloc_header* header; } alloc_footer;
 
-#define dump_blocks() _dump_blocks(__FILE__, __LINE__)
 void _dump_blocks(char* file, int line){
 	printf("BLOCKS %s:%d\n", file, line);
+	printf("    from memory at 0x%p\n", first_header);
 	if (book_keeper->last == NULL){
 		printf("    <no blocks>\n");
 		return;
 	}
 	alloc_header* curr_header = first_header;
 	while (true){
-		printf("    block(%s) <%zu>\n", curr_header->isfree?"free":"used", curr_header->size);
+		printf(
+			"    block(%s) at 0x%p <%zu>\n",
+			curr_header->isfree?"free":"used",
+			header_to_block(curr_header),
+			curr_header->size
+		);
 		if (header_to_block(curr_header) == book_keeper->last) {return;}
 		curr_header = next_header(header_to_block(curr_header));
 	}
@@ -154,22 +150,4 @@ void free(block p){
 	} else {
 		_merge_next(p);
 	}
-}
-
-int main(){
-	dump_blocks();
-	byte* x = malloc(10);
-	dump_blocks();
-	byte* y = malloc(2);
-	dump_blocks();
-	printf("_mem = %p\nx = %p\ny = %p\n", first_header, x, y);
-	free(x);
-	dump_blocks();
-	free(y);
-	dump_blocks();
-	x = malloc(10);
-	dump_blocks();
-	printf("x = %p\n", x);
-
-	return 0;
 }
