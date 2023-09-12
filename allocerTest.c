@@ -41,5 +41,19 @@ int main(){
 	free(a);                dump_blocks();
 	free(b);                dump_blocks();
 
+	printf("realloc last block larger ============================================\n");
+	                        dump_blocks();
+	a = malloc(10);         dump_blocks();
+	realloc(a, 20);         dump_blocks();
+	free(a);                dump_blocks();
+
+	printf("realloc block larger with no space ===================================\n");
+	                        dump_blocks();
+	a = malloc(10);         dump_blocks();
+	b = malloc(10);         dump_blocks();
+	a = realloc(a, 20);     dump_blocks();
+	free(b);                dump_blocks();
+	free(a);                dump_blocks();
+
 	return 0;
 }

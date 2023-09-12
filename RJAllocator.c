@@ -2,9 +2,14 @@
 
 #include <stdbool.h>
 #include <stdio.h>
-#include <assert.h>
 #include <string.h>
 
+#ifdef DEBUG
+	#include <assert.h>
+	#define return_assert(cond, ...) assert(cond)
+#else 
+	#define return_assert(cond, ...) if(!(cond)){return __VA_ARGS__;}
+#endif
 typedef unsigned char byte;
 
 byte _mem[RJ_MEM_SIZE] = {0};
@@ -91,8 +96,8 @@ block malloc(size_t size){
 	while((char*)curr_header < (char*)&_mem + RJ_MEM_SIZE){
 		if (curr_header->isfree && curr_header->size >= size){
 			curr_header->isfree = false;
-			assert(book_keeper->last != curr_header && "the last block should never be free as the last block should be moved backwards when freeing it");
-			assert((next_header(header_to_block(curr_header))->isfree == false) && "as this is free the next block shouldnt be free or they would have been merged when freeing");
+			return_assert(book_keeper->last != curr_header && "the last block should never be free as the last block should be moved backwards when freeing it", NULL);
+			return_assert((next_header(header_to_block(curr_header))->isfree == false) && "as this is free the next block shouldnt be free or they would have been merged when freeing", NULL);
 			_split_block(curr_header, size);
 			return header_to_block(curr_header);
 		}else if(header_to_block(curr_header) == book_keeper->last) {
@@ -119,7 +124,7 @@ static block _merge_prev(block b){
 static block _merge_next(block b){
 	alloc_header* next = next_header(b);
 	if (!next->isfree) { return b; }
-	assert(header_to_block(next) != book_keeper->last && "the last element must not be free");
+	return_assert(header_to_block(next) != book_keeper->last && "the last element must not be free", NULL);
 	alloc_header* head = block_to_header(b);
 	head->size += next->size + sizeof(alloc_footer) + sizeof(alloc_header);
 	block_to_footer(b)->header = head;
@@ -137,10 +142,10 @@ block realloc(block p, size_t newsize){
 	}
 	alloc_header* p_head = block_to_header(p);
 	if (p_head->size == newsize){return p;}
-	assert((
+	return_assert((
 		(block)p_head >= (block)first_header &&
 		(block)next_header(p) < (block)book_keeper
-	) && "this memory is outside the limit");
+	) && "this memory is outside the limit", NULL);
 	if (p_head->size >= newsize){
 		if (p == book_keeper->last){
 			p_head->size = newsize;
@@ -158,7 +163,7 @@ block realloc(block p, size_t newsize){
 			return p;
 		}
 	}else if(next_header(p)->isfree){
-		assert(next_header(header_to_block(next_header(p)))->isfree == false && "there should only be one free block in a row");
+		return_assert(next_header(header_to_block(next_header(p)))->isfree == false && "there should only be one free block in a row", NULL);
 		if (p_head->size + sizeof(alloc_footer) + sizeof(alloc_header) + next_header(p)->size >= newsize){
 			block new_b = _split_block(
 				next_header(p),
@@ -173,7 +178,7 @@ block realloc(block p, size_t newsize){
 		}
 	}
 	// we cant expand the old block so we have to copy the contents 
-	assert(p_head->size < newsize && "this should be handled earlier");
+	return_assert(p_head->size < newsize && "this should be handled earlier", NULL);
 	if (p_head != first_header && prev_header(p)->isfree){
 		block prev_b = header_to_block(prev_header(p));
 
@@ -204,9 +209,10 @@ block realloc(block p, size_t newsize){
 void free(block p){
 	if (p == NULL) {return;}
 	alloc_header* p_head = block_to_header(p);
-	assert((
+	return_assert((
 		(block)p_head >= (block)first_header &&
-		(block)next_header(p) < (block)book_keeper
+		(block)next_header(p) < (block)book_keeper &&
+		p <= book_keeper->last
 	) && "this memory is outside the limit");
 
 	p_head->isfree = true;
