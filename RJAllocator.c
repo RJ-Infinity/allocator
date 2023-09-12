@@ -175,19 +175,22 @@ block realloc(block p, size_t newsize){
 	// we cant expand the old block so we have to copy the contents 
 	assert(p_head->size < newsize && "this should be handled earlier");
 	if (prev_header(p)->isfree){
-		if (prev_header(p)->size + sizeof(alloc_footer) + sizeof(alloc_header) + p_head->size >= newsize){
-			if (prev_header(p)->size + sizeof(alloc_footer) + sizeof(alloc_header) + p_head->size > newsize + sizeof(alloc_footer) + sizeof(alloc_header)){
-				block new_b = header_to_block(prev_header(p));
-				block_to_footer(p)->header = prev_header(p);
-				prev_header(p)->isfree = false;
-				prev_header(p)->size += sizeof(alloc_footer) + sizeof(alloc_header) + p_head->size;
-				// cant use memcpy as they are potentialy overlapping
-				safe_memcpy(new_b, p, p_head->size);
-				return new_b;
-			}
-			// TODO: merge with previous block
+		block prev_b = header_to_block(prev_header(p));
+
+		size_t surounding_space = prev_header(p)->size + sizeof(alloc_footer) + sizeof(alloc_header) + p_head->size;
+		if (next_header(p)->isfree)
+		{surounding_space += sizeof(alloc_footer) + sizeof(alloc_header) + next_header(p)->size;}
+		
+		if (surounding_space >= newsize){
+			prev_header(p)->isfree = false;
+			prev_header(p)->size = surounding_space;
+			block_to_footer(header_to_block(prev_header(p)))->header = prev_header(p);
+			// cant use memcpy as they are potentialy overlapping
+			safe_memcpy(prev_b, p, p_head->size);
+			block new_b = _split_block(prev_header(p), newsize);
+			if (new_b != NULL){ _merge_next(new_b); }
+			return prev_b;
 		}
-		// TODO: merge with block either side
 	}
 	//there is no way of merging the current block so get a completly new block and free the old one
 	block new_b = malloc(newsize);
