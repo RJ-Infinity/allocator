@@ -169,8 +169,18 @@ block realloc(block p, size_t newsize){
 			return p;
 		}
 	}
-	// TODO: allocate new block if the size cannot be accomadated
-	return NULL;
+	// we cant expand the old block so we have to copy the contents 
+	assert(p_head->size < newsize && "this should be handled earlier");
+	if (prev_header(p)->isfree){
+		// TODO: merge with previous block and posibly the next block
+	}
+	//there is no way of merging the current block so get a completly new block and free the old one
+	block new_b = malloc(newsize);
+	if (new_b != NULL){
+		memcpy(new_b, p, p_head->size);
+		free(p);
+	}
+	return new_b;
 }
 
 void free(block p){
