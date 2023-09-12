@@ -174,11 +174,11 @@ block realloc(block p, size_t newsize){
 	}
 	// we cant expand the old block so we have to copy the contents 
 	assert(p_head->size < newsize && "this should be handled earlier");
-	if (prev_header(p)->isfree){
+	if (p_head != first_header && prev_header(p)->isfree){
 		block prev_b = header_to_block(prev_header(p));
 
 		size_t surounding_space = prev_header(p)->size + sizeof(alloc_footer) + sizeof(alloc_header) + p_head->size;
-		if (next_header(p)->isfree)
+		if (p != book_keeper->last && next_header(p)->isfree)
 		{surounding_space += sizeof(alloc_footer) + sizeof(alloc_header) + next_header(p)->size;}
 		
 		if (surounding_space >= newsize){
