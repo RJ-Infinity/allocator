@@ -126,6 +126,9 @@ static block _merge_next(block b){
 	return _merge_next(b);
 }
 
+void safe_memcpy(byte* dest, byte* src, size_t count)
+{for (size_t i = 0; i < count; i++) { dest[i] = src[i]; }}
+
 block realloc(block p, size_t newsize){
 	if (p == NULL) {return malloc(newsize);}
 	if (newsize == 0){
@@ -172,7 +175,19 @@ block realloc(block p, size_t newsize){
 	// we cant expand the old block so we have to copy the contents 
 	assert(p_head->size < newsize && "this should be handled earlier");
 	if (prev_header(p)->isfree){
-		// TODO: merge with previous block and posibly the next block
+		if (prev_header(p)->size + sizeof(alloc_footer) + sizeof(alloc_header) + p_head->size >= newsize){
+			if (prev_header(p)->size + sizeof(alloc_footer) + sizeof(alloc_header) + p_head->size > newsize + sizeof(alloc_footer) + sizeof(alloc_header)){
+				block new_b = header_to_block(prev_header(p));
+				block_to_footer(p)->header = prev_header(p);
+				prev_header(p)->isfree = false;
+				prev_header(p)->size += sizeof(alloc_footer) + sizeof(alloc_header) + p_head->size;
+				// cant use memcpy as they are potentialy overlapping
+				safe_memcpy(new_b, p, p_head->size);
+				return new_b;
+			}
+			// TODO: merge with previous block
+		}
+		// TODO: merge with block either side
 	}
 	//there is no way of merging the current block so get a completly new block and free the old one
 	block new_b = malloc(newsize);
