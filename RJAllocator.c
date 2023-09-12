@@ -70,6 +70,8 @@ static block _split_block(alloc_header* h, size_t new_size){
 	{return NULL;}
 	size_t oldSize = h->size;
 	h->size = new_size;
+	*block_to_footer(header_to_block(h)) = (alloc_footer){.header = h,};
+
 	block new_b = header_to_block(next_header(header_to_block(h)));
 	*block_to_header(new_b) = (alloc_header){
 		.size = oldSize - new_size - sizeof(alloc_header) - sizeof(alloc_footer),
@@ -125,7 +127,13 @@ static block _merge_next(block b){
 }
 
 block realloc(block p, size_t newsize){
+	if (p == NULL) {return malloc(newsize);}
+	if (newsize == 0){
+		free(p);
+		return NULL;
+	}
 	alloc_header* p_head = block_to_header(p);
+	if (p_head->size == newsize){return p;}
 	assert((
 		(block)p_head >= (block)first_header &&
 		(block)next_header(p) < (block)book_keeper
@@ -140,12 +148,33 @@ block realloc(block p, size_t newsize){
 		}
 		return p;
 	}
-	// TODO: increase size of block if posible
+	if (p == book_keeper->last){
+		if (((byte*)p) + newsize + sizeof(alloc_footer) < (byte*)book_keeper) {
+			p_head->size = newsize;
+			block_to_footer(p)->header = p_head;
+			return p;
+		}
+	}else if(next_header(p)->isfree){
+		assert(next_header(header_to_block(next_header(p)))->isfree == false && "there should only be one free block in a row");
+		if (p_head->size + sizeof(alloc_footer) + sizeof(alloc_header) + next_header(p)->size >= newsize){
+			block new_b = _split_block(
+				next_header(p),
+				newsize - p_head->size - sizeof(alloc_footer) - sizeof(alloc_header)
+			);
+			block_to_footer(header_to_block(next_header(p)))->header = p_head;
+			if (new_b == NULL){ // this means that the block is slightly to big so we
+				// need to calculate the larger size
+				p_head->size += sizeof(alloc_footer) + sizeof(alloc_header) + next_header(p)->size;
+			}else{ p_head->size = newsize; }
+			return p;
+		}
+	}
 	// TODO: allocate new block if the size cannot be accomadated
 	return NULL;
 }
 
 void free(block p){
+	if (p == NULL) {return;}
 	alloc_header* p_head = block_to_header(p);
 	assert((
 		(block)p_head >= (block)first_header &&
