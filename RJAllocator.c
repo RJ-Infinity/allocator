@@ -64,12 +64,15 @@ static block _create_last_block(size_t size){
 	return book_keeper->last;
 }
 
-static block _split_block(alloc_header* h, size_t size){
+static block _split_block(alloc_header* h, size_t new_size){
+	if (h->size <= new_size + sizeof(alloc_header) + sizeof(alloc_footer))
+	// there isnt enough space to create a free block in the leftover space so fail
+	{return NULL;}
 	size_t oldSize = h->size;
-	h->size = size;
+	h->size = new_size;
 	block new_b = header_to_block(next_header(header_to_block(h)));
 	*block_to_header(new_b) = (alloc_header){
-		.size = oldSize - size - sizeof(alloc_header) - sizeof(alloc_footer),
+		.size = oldSize - new_size - sizeof(alloc_header) - sizeof(alloc_footer),
 		.isfree = true,
 	};
 	*block_to_footer(new_b) = (alloc_footer){
@@ -88,11 +91,7 @@ block malloc(size_t size){
 			curr_header->isfree = false;
 			assert(book_keeper->last != curr_header && "the last block should never be free as the last block should be moved backwards when freeing it");
 			assert((next_header(header_to_block(curr_header))->isfree == false) && "as this is free the next block shouldnt be free or they would have been merged when freeing");
-			if (curr_header->size > size + sizeof(alloc_header) + sizeof(alloc_footer)){
-				// there is enough space to create a free block in the leftover space
-				// when this isnt true we return a block that is too big
-				_split_block(curr_header, size);
-			}
+			_split_block(curr_header, size);
 			return header_to_block(curr_header);
 		}else if(header_to_block(curr_header) == book_keeper->last) {
 			return _create_last_block(size);
@@ -105,12 +104,6 @@ block calloc(size_t size, size_t num){
 	block rv = malloc(size * num);
 	memset(rv, 0, size * num);
 	return rv;
-}
-
-block realloc(block p, size_t newsize){
-	(void)p;
-	(void)newsize;
-	return NULL;
 }
 
 static block _merge_prev(block b){
@@ -131,11 +124,32 @@ static block _merge_next(block b){
 	return _merge_next(b);
 }
 
+block realloc(block p, size_t newsize){
+	alloc_header* p_head = block_to_header(p);
+	assert((
+		(block)p_head >= (block)first_header &&
+		(block)next_header(p) < (block)book_keeper
+	) && "this memory is outside the limit");
+	if (p_head->size >= newsize){
+		if (p == book_keeper->last){
+			p_head->size = newsize;
+			block_to_footer(p)->header = p_head;
+		}else{
+			block new_b = _split_block(p_head, newsize);
+			if (new_b != NULL){ _merge_next(new_b); }
+		}
+		return p;
+	}
+	// TODO: increase size of block if posible
+	// TODO: allocate new block if the size cannot be accomadated
+	return NULL;
+}
+
 void free(block p){
 	alloc_header* p_head = block_to_header(p);
 	assert((
-		(block)p_head >= (block)_mem ||
-		p_head->size + (byte*)p + sizeof(alloc_footer) > (byte*)book_keeper
+		(block)p_head >= (block)first_header &&
+		(block)next_header(p) < (block)book_keeper
 	) && "this memory is outside the limit");
 
 	p_head->isfree = true;
