@@ -14,13 +14,19 @@ typedef unsigned char byte;
 
 byte _mem[RJ_MEM_SIZE] = {0};
 
-#define book_keeper ((book_keep*)(&(_mem[RJ_MEM_SIZE-sizeof(book_keep)])))
+#ifdef DONT_USE_END
+	#define book_keeper ((book_keep*)&_mem[0])
+	#define first_header ((alloc_header*)((byte*)book_keeper + sizeof(book_keep)))
+#else
+	#define book_keeper ((book_keep*)(&(_mem[RJ_MEM_SIZE-sizeof(book_keep)])))
+	#define first_header ((alloc_header*)&_mem[0])
+#endif
+
 #define block_to_header(b) ((alloc_header*)( ((byte*)(b)) - sizeof(alloc_header) ))
 #define block_to_footer(b) ((alloc_footer*)(((byte*)(b)) + block_to_header(b)->size))
 #define prev_header(b) (((alloc_footer*)( ((byte*)block_to_header(b)) - sizeof(alloc_footer) ))->header)
 #define next_header(b) ((alloc_header*)(((byte*)(b)) + block_to_header(b)->size + sizeof(alloc_footer)))
 #define header_to_block(h) ((block)(((byte*)(h)) + sizeof(alloc_header)))
-#define first_header ((alloc_header*)&_mem[0])
 
 typedef void* block;
 typedef struct{
