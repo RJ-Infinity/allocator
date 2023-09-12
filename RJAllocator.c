@@ -17,9 +17,11 @@ byte _mem[RJ_MEM_SIZE] = {0};
 #ifdef DONT_USE_END
 	#define book_keeper ((book_keep*)&_mem[0])
 	#define first_header ((alloc_header*)((byte*)book_keeper + sizeof(book_keep)))
+	#define mem_end ((byte*)&_mem + RJ_MEM_SIZE)
 #else
 	#define book_keeper ((book_keep*)(&(_mem[RJ_MEM_SIZE-sizeof(book_keep)])))
 	#define first_header ((alloc_header*)&_mem[0])
+	#define mem_end ((byte*)book_keeper)
 #endif
 
 #define block_to_header(b) ((alloc_header*)( ((byte*)(b)) - sizeof(alloc_header) ))
@@ -61,8 +63,10 @@ void _dump_blocks(char* file, int line){
 static block _create_last_block(size_t size){
 	alloc_header* h = (book_keeper->last == NULL) ? first_header : next_header(book_keeper->last);
 
-	if((byte*)h + sizeof(alloc_header) + size + sizeof(alloc_footer) > (byte*)book_keeper)
-	{ return NULL; } // this means that there is not enough memory left for the block
+	return_assert(
+		(byte*)h + sizeof(alloc_header) + size + sizeof(alloc_footer) <= (byte*)(mem_end) &&
+		"this means that there is not enough memory left for the block", NULL
+	);
 
 	*h = (alloc_header){
 		.size = size,
@@ -76,9 +80,10 @@ static block _create_last_block(size_t size){
 }
 
 static block _split_block(alloc_header* h, size_t new_size){
-	if (h->size <= new_size + sizeof(alloc_header) + sizeof(alloc_footer))
-	// there isnt enough space to create a free block in the leftover space so fail
-	{return NULL;}
+	return_assert(
+		h->size > new_size + sizeof(alloc_header) + sizeof(alloc_footer) &&
+		"there isnt enough space to create a free block in the leftover space so fail", NULL
+	);
 	size_t oldSize = h->size;
 	h->size = new_size;
 	*block_to_footer(header_to_block(h)) = (alloc_footer){.header = h,};
@@ -95,11 +100,11 @@ static block _split_block(alloc_header* h, size_t new_size){
 }
 
 block malloc(size_t size){
-	if (size == 0){ return NULL; }
+	return_assert(size != 0, NULL);
 	if (book_keeper->last == NULL) { return _create_last_block(size); }
 
 	alloc_header* curr_header = first_header;
-	while((char*)curr_header < (char*)&_mem + RJ_MEM_SIZE){
+	while((byte*)curr_header < mem_end){
 		if (curr_header->isfree && curr_header->size >= size){
 			curr_header->isfree = false;
 			return_assert(book_keeper->last != curr_header && "the last block should never be free as the last block should be moved backwards when freeing it", NULL);
@@ -110,7 +115,7 @@ block malloc(size_t size){
 			return _create_last_block(size);
 		} else { curr_header = next_header(header_to_block(curr_header)); }
 	}
-	return NULL;
+	return_assert("this means there is no space left", NULL);
 }
 
 block calloc(size_t size, size_t num){
@@ -150,7 +155,7 @@ block realloc(block p, size_t newsize){
 	if (p_head->size == newsize){return p;}
 	return_assert((
 		(block)p_head >= (block)first_header &&
-		(block)next_header(p) < (block)book_keeper
+		(block)next_header(p) < (block)(mem_end)
 	) && "this memory is outside the limit", NULL);
 	if (p_head->size >= newsize){
 		if (p == book_keeper->last){
@@ -163,7 +168,7 @@ block realloc(block p, size_t newsize){
 		return p;
 	}
 	if (p == book_keeper->last){
-		if (((byte*)p) + newsize + sizeof(alloc_footer) < (byte*)book_keeper) {
+		if (((byte*)p) + newsize + sizeof(alloc_footer) < (byte*)(mem_end)) {
 			p_head->size = newsize;
 			block_to_footer(p)->header = p_head;
 			return p;
@@ -213,11 +218,11 @@ block realloc(block p, size_t newsize){
 }
 
 void free(block p){
-	if (p == NULL) {return;}
+	return_assert(p != NULL);
 	alloc_header* p_head = block_to_header(p);
 	return_assert((
 		(block)p_head >= (block)first_header &&
-		(block)next_header(p) < (block)book_keeper &&
+		(block)next_header(p) < (block)(mem_end) &&
 		p <= book_keeper->last
 	) && "this memory is outside the limit");
 
