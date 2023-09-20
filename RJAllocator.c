@@ -67,6 +67,11 @@ void _dump_blocks(char* file, int line){
 	}
 }
 
+size_t malloc_usable_size(block p){
+	if (p <= (block)first_header || p > (block)mem_end){return 0;} //this also catches NULL ptrs
+	return block_to_header(p)->size;
+}
+
 static block _create_last_block(size_t size){
 	alloc_header* h = (book_keeper->last == NULL) ? first_header : next_header(book_keeper->last);
 

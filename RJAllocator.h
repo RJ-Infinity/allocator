@@ -13,6 +13,7 @@
 
 #define dump_blocks() _dump_blocks(__FILE__, __LINE__)
 void _dump_blocks(char* file, int line);
+size_t malloc_usable_size(void* p);
 
 void* malloc(size_t size);
 void* calloc(size_t size, size_t num);
