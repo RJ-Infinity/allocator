@@ -2,11 +2,13 @@
 
 #include <stddef.h>
 
-#define malloc RJ_malloc
-#define calloc RJ_calloc
-#define realloc RJ_realloc
-#define free RJ_free
-#define malloc_usable_size RJ_malloc_usable_size
+#ifndef REDEFINE_MALLOC_WITH_RJ_IMPLEMETATIONS
+	#define malloc RJ_malloc
+	#define calloc RJ_calloc
+	#define realloc RJ_realloc
+	#define free RJ_free
+	#define malloc_usable_size RJ_malloc_usable_size
+#endif
 
 #define ENOMEM 12 // no memory left on the system
 #define	EINVAL 22 // invalid argument
