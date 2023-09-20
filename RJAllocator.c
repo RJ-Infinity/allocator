@@ -2,15 +2,16 @@
 
 #include <stdbool.h>
 #include <stdio.h>
+#include <errno.h>
 #include <string.h>
 
 #ifdef DEBUG
 	#include <assert.h>
-	#define _return_void_assert(cond, err) assert(cond)
+	#define _return_void_assert(cond, err) do{ errno = err; assert(cond);}while(0)
 	#define _return_val_assert(cond, err, val) _return_void_assert(cond)
 #else 
-	#define _return_void_assert(cond, err) if(!(cond)){return;}
-	#define _return_val_assert(cond, err, val) if(!(cond)){return val;}
+	#define _return_void_assert(cond, err) if(!(cond)){errno = err; return;}
+	#define _return_val_assert(cond, err, val) if(!(cond)){errno = err; return val;}
 #endif
 
 // this macro trick is taken from https://stackoverflow.com/a/3048361/15755351
@@ -76,7 +77,9 @@ static block _create_last_block(size_t size){
 	alloc_header* h = (book_keeper->last == NULL) ? first_header : next_header(book_keeper->last);
 
 	return_assert(
-		(byte*)h + sizeof(alloc_header) + size + sizeof(alloc_footer) <= (byte*)(mem_end) &&
+		// (byte*)h + sizeof(alloc_header) + size + sizeof(alloc_footer) <= (byte*)(mem_end) &&
+		// the above has been restructured as bellow to avoid overflows
+		size <= (byte*)(mem_end) - (byte*)h - sizeof(alloc_header) - sizeof(alloc_footer) &&
 		"this means that there is not enough memory left for the block", ENOMEM, NULL
 	);
 
