@@ -6,10 +6,17 @@
 
 #ifdef DEBUG
 	#include <assert.h>
-	#define return_assert(cond, ...) assert(cond)
+	#define _return_void_assert(cond) assert(cond)
+	#define _return_val_assert(cond, val) _return_void_assert(cond)
 #else 
-	#define return_assert(cond, ...) if(!(cond)){return __VA_ARGS__;}
+	#define _return_void_assert(cond) if(!(cond)){return;}
+	#define _return_val_assert(cond, val) if(!(cond)){return val;}
 #endif
+
+// this macro trick is taken from https://stackoverflow.com/a/3048361/15755351
+#define GET_3RD_ARG(arg1, arg2, arg3, ...) arg3
+#define return_assert(...) GET_3RD_ARG(__VA_ARGS__, _return_val_assert, _return_void_assert, )(__VA_ARGS__)
+
 typedef unsigned char byte;
 
 byte _mem[RJ_MEM_SIZE] = {0};
