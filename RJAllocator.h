@@ -7,6 +7,11 @@
 #define realloc RJ_realloc
 #define free RJ_free
 
+#define ENOMEM 12 // no memory left on the system
+#define	EINVAL 22 // invalid argument
+#define	EFAULT 14 // invalid memory
+#define EINVSTATE 35 // an invalid state (usualy due to an incorect argument passed the system is in an invalid state restart the program)
+
 #ifndef RJ_MEM_SIZE
 	#define RJ_MEM_SIZE (64 * 1000 * 1000)
 #endif
