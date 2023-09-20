@@ -136,6 +136,7 @@ block malloc(size_t size){
 }
 
 block calloc(size_t size, size_t num){
+	return_assert(size <= ((size_t)-1) / num && "detect if there will be an overflow", ENOMEM, NULL);
 	block rv = malloc(size * num);
 	memset(rv, 0, size * num);
 	return rv;

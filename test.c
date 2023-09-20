@@ -37,44 +37,26 @@ TEST(malloc, malloc_std) {
 
 TEST(malloc, malloc_overflow) {
 	errno = 0;
-	printf("%p\n",malloc(SIZE_MAX));
 	ASSERT_EQ(NULL, malloc(SIZE_MAX));
 	ASSERT_EQ(ENOMEM, errno);
 }
-// TEST(malloc, calloc_std) {
-// 	// Simple calloc test.
-// 	size_t alloc_len = 100;
-// 	char *ptr = (char *)calloc(1, alloc_len);
-// 	ASSERT_TRUE(ptr != NULL);
-// 	ASSERT_LE(alloc_len, malloc_usable_size(ptr));
-// 	for (size_t i = 0; i < alloc_len; i++) {
-// 		ASSERT_EQ(0, ptr[i]);
-// 	}
-// 	free(ptr);
-// }
-// TEST(malloc, calloc_mem_init_disabled) {
-// #if defined(__BIONIC__)
-// 	// calloc should still zero memory if mem-init is disabled.
-// 	// With jemalloc the mallopts will fail but that shouldn't affect the
-// 	// execution of the test.
-// 	mallopt(M_THREAD_DISABLE_MEM_INIT, 1);
-// 	size_t alloc_len = 100;
-// 	char *ptr = reinterpret_cast<char*>(calloc(1, alloc_len));
-// 	for (size_t i = 0; i < alloc_len; i++) {
-// 		ASSERT_EQ(0, ptr[i]);
-// 	}
-// 	free(ptr);
-// 	mallopt(M_THREAD_DISABLE_MEM_INIT, 0);
-// #else
-// 	GTEST_SKIP() << "bionic-only test";
-// #endif
-// }
-// TEST(malloc, calloc_illegal) {
-// 	SKIP_WITH_HWASAN;
-// 	errno = 0;
-// 	ASSERT_EQ(NULL, calloc(-1, 100));
-// 	ASSERT_EQ(ENOMEM, errno);
-// }
+TEST(malloc, calloc_std) {
+	// Simple calloc test.
+	size_t alloc_len = 100;
+	char *ptr = (char *)calloc(1, alloc_len);
+	ASSERT_TRUE(ptr != NULL);
+	ASSERT_LE(alloc_len, malloc_usable_size(ptr));
+	for (size_t i = 0; i < alloc_len; i++) {
+		ASSERT_EQ(0, ptr[i]);
+	}
+	free(ptr);
+}
+
+TEST(malloc, calloc_illegal) {
+	errno = 0;
+	ASSERT_EQ(NULL, calloc(-1, 100));
+	ASSERT_EQ(ENOMEM, errno);
+}
 // TEST(malloc, calloc_overflow) {
 // 	SKIP_WITH_HWASAN;
 // 	errno = 0;
