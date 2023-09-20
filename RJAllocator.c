@@ -127,7 +127,7 @@ block malloc(size_t size){
 			return _create_last_block(size);
 		} else { curr_header = next_header(header_to_block(curr_header)); }
 	}
-	return_assert("this means there is no space left", NULL);
+	return_assert(false && "this means there is no space left", NULL);
 }
 
 block calloc(size_t size, size_t num){
